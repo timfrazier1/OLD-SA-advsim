@@ -5,6 +5,7 @@ import json
 #so we can import local libs as needed
 from splunk.clilib.bundle_paths import make_splunkhome_path
 
+fire_search = "|makeresults | eval os=\"windows\", test_id=\"{test_id}\", destinationAddress=\"{dest_addr}\""
 
 if sys.platform == "win32":
     import msvcrt
@@ -23,8 +24,14 @@ class SimHandler(PersistentServerConnectionApplication):
         PersistentServerConnectionApplication.__init__(self)
 
     def handle(self, in_string):
-        query_params=json.loads(in_string)
-        resp = json.dumps(query_params["query"])
-        return {'payload': resp ,  # Payload of the request.
-                'status': 200          # HTTP status code
-        }
+        try:
+            query_params=json.loads(in_string)
+            resp = dict(query_params["query"]).get('id',"noop")
+            
+            return {'payload': fire_search.format(test_id=resp,dest_addr="192.169.1.1"),  # Payload of the request.
+                    'status': 200          # HTTP status code
+            }
+        except Exception as e:
+            return {'payload': str(e) ,  # Payload of the request.
+                    'status': 500          # HTTP status code
+            }
