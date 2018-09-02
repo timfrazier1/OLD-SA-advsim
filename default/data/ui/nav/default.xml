@@ -1,4 +1,4 @@
 <nav search_view="search">
-  <view name="search" default="true"/>
-  <view name="dashboards" />
+  <view name="simulation_runner" default="true" />
+  <view name="search"/>
 </nav>

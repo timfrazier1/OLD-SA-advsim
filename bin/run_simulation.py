@@ -5,7 +5,14 @@ import json
 #so we can import local libs as needed
 from splunk.clilib.bundle_paths import make_splunkhome_path
 
-fire_search = "|makeresults | eval os=\"windows\", test_id=\"{test_id}\", destinationAddress=\"{dest_addr}\""
+fire_search = "|makeresults | eval os=\"windows\", test_id=\"{test_id}\", dest=\"{dest_addr}\""
+# example search
+# |makeresults | eval os="windows", test_id="T1155", dest="192.169.1.1" 
+# | sendalert sendtophantom param.phantom_server="automation (https://34.204.5.46)" param.severity="medium" param.sensitivity="amber"
+# param.phantom_server= should be retireved programattically from 
+# /servicesNS/nobody/phantom/configs/conf-phantom/phantom?output_mode=json
+# phantom_server = json.load(sys.stdin)["entry"][0]["content"]["value"]
+# phantom_server = json.loads(phantom_server).keys()[0]
 
 if sys.platform == "win32":
     import msvcrt

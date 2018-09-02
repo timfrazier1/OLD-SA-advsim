@@ -1,0 +1,78 @@
+<form>
+  <label>Simulation Runner</label>
+  <description>Takes query parameters and runs a simulation</description>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="text" token="tech_name" searchWhenChanged="false">
+      <label>Technique Name</label>
+    </input>
+    <input type="text" token="test_id">
+      <label>Technique ID</label>
+    </input>
+    <input type="text" token="playbook_name">
+      <label>Playbook Name</label>
+      <default>Modular Simulation</default>
+      <initialValue>Modular Simulation</initialValue>
+    </input>
+    <input type="dropdown" token="ph_srv">
+      <label>Phantom Server</label>
+      <fieldForLabel>phantom_server</fieldForLabel>
+      <fieldForValue>phantom_server</fieldForValue>
+      <search>
+        <query>| rest /servicesNS/-/phantom/configs/conf-phantom/phantom | rex field=value "^\{\"(?&lt;phantom_server&gt;.*)\"\:\s{" | table phantom_server</query>
+        <earliest>-15m</earliest>
+        <latest>now</latest>
+      </search>
+      <choice value="NULL">NULL</choice>
+    </input>
+    <input type="dropdown" token="asset" searchWhenChanged="false">
+      <label>Asset</label>
+      <search>
+        <query>|inputlookup attck_assets</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <fieldForLabel>hostname</fieldForLabel>
+      <fieldForValue>hostname</fieldForValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <search>
+          <finalized>
+            <set token="search_id">$result.info_sid$</set>
+          </finalized>
+          <query>| inputlookup attck_assets | search hostname="$asset$"
+| addinfo 
+| eval dest=ip_address 
+| eval action="$test_id$"
+| eval request_payload=tostring(random())
+| eval playbook_name="$playbook_name$"
+| eval phantom_server="$ph_srv$"
+| fields * 
+| sendalert sendtophantom action_name="sendtophantom" param.playbook_name="$playbook_name$" param.phantom_server="$ph_srv$" param.sensitivity="amber" param.severity="low"</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <fields>["hostname","action","dest","os","phantom_server","playbook_name","request_payload"]</fields>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$search_id$">
+      <table>
+        <title>Job Status</title>
+        <search>
+          <query>| rest /services/search/jobs/$search_id$/search.log | rex field=value "action=(?&lt;Run_Result&gt;.*exit code=\d{1,5})" | table Run_Result</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>
