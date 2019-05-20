@@ -18,7 +18,7 @@
       <fieldForLabel>phantom_server</fieldForLabel>
       <fieldForValue>phantom_server</fieldForValue>
       <search>
-          <query>| rest /servicesNS/-/phantom/configs/conf-phantom/phantom | rex field=value "^\{\"(?&lt;phantom_server&gt;.*)\"\:\s{" | rex field=value "\"custom_name\": \"(?&lt;custom_name&gt;[^\"]*)\"," | table phantom_server, custom_name</query>
+          <query>| rest /servicesNS/-/phantom/configs/conf-phantom/phantom | rex field=value "^\{\"(?&lt;phantom_server&gt;.*)\"\:\s{" | rex field=value "\"custom_name\": \"(?&lt;custom_name&gt;[^\"]*)\"" | table phantom_server, custom_name</query>
           <earliest>-15m</earliest>
         <latest>now</latest>
       </search>
