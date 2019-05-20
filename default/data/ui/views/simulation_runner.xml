@@ -40,7 +40,8 @@
       <table>
         <search>
           <finalized>
-            <set token="search_id">$result.info_sid$</set>
+              <set token="search_id">$result.info_sid$</set>
+              <set token="request_payload">$result.request_payload$</set>
           </finalized>
           <query>| inputlookup attck_assets | search hostname="$asset$"
 | addinfo 
