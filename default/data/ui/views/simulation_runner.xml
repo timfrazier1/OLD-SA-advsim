@@ -18,8 +18,8 @@
       <fieldForLabel>phantom_server</fieldForLabel>
       <fieldForValue>phantom_server</fieldForValue>
       <search>
-        <query>| rest /servicesNS/-/phantom/configs/conf-phantom/phantom | rex field=value "^\{\"(?&lt;phantom_server&gt;.*)\"\:\s{" | table phantom_server</query>
-        <earliest>-15m</earliest>
+          <query>| rest /servicesNS/-/phantom/configs/conf-phantom/phantom | rex field=value "^\{\"(?&lt;phantom_server&gt;.*)\"\:\s{" | rex field=value "\"custom_name\": \"(?&lt;custom_name&gt;[^\"]*)\"," | table phantom_server, custom_name</query>
+          <earliest>-15m</earliest>
         <latest>now</latest>
       </search>
       <choice value="NULL">NULL</choice>
@@ -50,7 +50,7 @@
 | eval playbook_name="$playbook_name$"
 | eval phantom_server="$ph_srv$"
 | fields * 
-| sendalert sendtophantom action_name="sendtophantom" param.playbook_name="$playbook_name$" param.phantom_server="$ph_srv$" param.sensitivity="amber" param.severity="low"</query>
+| sendalert sendtophantom param.phantom_server="$ph_srv$" param.sensitivity="amber" param.severity="low" param.sensitivity="amber" param.severity="low"</query>
           <earliest>-24h@h</earliest>
           <latest>now</latest>
         </search>
