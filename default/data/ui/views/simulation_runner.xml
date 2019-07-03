@@ -18,21 +18,33 @@
       <fieldForLabel>custom_name</fieldForLabel>
       <fieldForValue>phantom_server</fieldForValue>
       <search>
-          <query>| rest /servicesNS/-/phantom/configs/conf-phantom/phantom | rex field=value "^\{\"(?&lt;phantom_server&gt;.*)\"\:\s{" | rex field=value "\"custom_name\": \"(?&lt;custom_name&gt;[^\"]*)\"" | table phantom_server, custom_name</query>
-          <earliest>-15m</earliest>
+        <query>| rest /servicesNS/-/phantom/configs/conf-phantom/phantom | rex field=value "^\{\"(?&lt;phantom_server&gt;.*)\"\:\s{" | rex field=value "\"custom_name\": \"(?&lt;custom_name&gt;[^\"]*)\"" | table phantom_server, custom_name</query>
+        <earliest>-15m</earliest>
         <latest>now</latest>
       </search>
       <choice value="NULL">NULL</choice>
+      <default>jxndnzdr</default>
+      <initialValue>jxndnzdr</initialValue>
     </input>
     <input type="dropdown" token="asset" searchWhenChanged="false">
       <label>Asset</label>
       <search>
         <query>|inputlookup attck_assets</query>
-        <earliest>-24h@h</earliest>
+        <earliest>-15m</earliest>
         <latest>now</latest>
       </search>
       <fieldForLabel>hostname</fieldForLabel>
       <fieldForValue>hostname</fieldForValue>
+    </input>
+    <input type="dropdown" token="detectionSearch" searchWhenChanged="false">
+      <label>Detection Search</label>
+      <search>
+        <query>| rest /servicesNS/-/-/saved/searches | table title, search</query>
+        <earliest>-15m</earliest>
+        <latest>now</latest>
+      </search>
+      <fieldForLabel>title</fieldForLabel>
+      <fieldForValue>search</fieldForValue>
     </input>
   </fieldset>
   <row>
@@ -40,17 +52,17 @@
       <table>
         <search>
           <finalized>
-              <set token="search_id">$result.info_sid$</set>
-              <set token="request_payload">$result.request_payload$</set>
+            <set token="search_id">$result.info_sid$</set>
+            <set token="request_payload">$result.request_payload$</set>
           </finalized>
           <query>| inputlookup attck_assets | search hostname="$asset$"
-| addinfo 
-| eval dest=ip_address 
+| addinfo
+| eval dest=ip_address
 | eval action="$test_id$"
 | eval request_payload=tostring(random())
 | eval playbook_name="$playbook_name$"
 | eval phantom_server="$ph_srv$"
-| fields * 
+| fields *
 | sendalert sendtophantom param.phantom_server="$ph_srv$" param.sensitivity="amber" param.severity="low" param.sensitivity="amber" param.severity="low"</query>
           <earliest>-24h@h</earliest>
           <latest>now</latest>
@@ -77,15 +89,15 @@
     </panel>
   </row>
   <row>
-    <panel>
-      <title>Events matching GUID</title>
+    <panel depends="$request_payload$">
+      <title>Phantom POST-ed Events matching GUID</title>
       <event>
         <search>
           <finalized>
             <set token="group_earliest">$result.group_earliest$</set>
             <set token="group_latest">$result.group_latest$</set>
           </finalized>
-          <query>| search index=* $request_payload$
+          <query>| search index=* sourcetype="advsim:atr" $request_payload$
 | addinfo
 | sort _time
 | stats earliest(_time) as group_earliest latest(_time) as group_latest</query>
@@ -107,14 +119,26 @@
     </panel>
   </row>
   <row>
+    <panel depends="detectionSearch">
+      <title>Detection Search Panel</title>
+      <table>
+        <title>$detectionSearch$</title>
+        <search>
+          <query>earliest=$group_earliest$ latest=$group_latest$ $detectionSearch$</query>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
     <panel depends="group_earliest">
-      <title>Sysmon non-eventCode=1</title>
+      <title>Sysmon Registry Events</title>
       <table>
         <search>
-          <query>earliest=$group_earliest$ latest=$group_latest$ index=* sourcetype="xmlwineventlog:microsoft-windows-sysmon/operational" EventCode!=1
+          <query>earliest=$group_earliest$ latest=$group_latest$ index=* sourcetype="xmlwineventlog:microsoft-windows-sysmon/operational" (EventCode=12 OR EventCode=13)
 | sort _time
-| table EventCode, EventDescription, Details, object_path</query>
-          <earliest>-7d@h</earliest>
+| table _time, EventCode, EventDescription, Details, object_path,</query>
+          <earliest>-1d@h</earliest>
           <latest>now</latest>
           <sampleRatio>1</sampleRatio>
         </search>
@@ -131,7 +155,7 @@
   </row>
   <row>
     <panel depends="group_earliest">
-      <title>Command Lines of Events during test time</title>
+      <title>Decoded Powershell commands from events during test time</title>
       <table>
         <search>
           <query>| search index=* earliest=$group_earliest$ latest=$group_latest$ | sort _time | rex field=CommandLine "-encodedcommand (?&lt;payload&gt;\w+)"
@@ -146,6 +170,68 @@
         <option name="drilldown">none</option>
         <option name="refresh.display">progressbar</option>
       </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="group_earliest">
+      <title>Cmd.exe commands from events during test time</title>
+      <table>
+        <search>
+          <query>| search index=* earliest=$group_earliest$ latest=$group_latest$ parent_process=*cmd.exe* CommandLine!=*-encoded*
+| sort _time
+| table _time, parent_process, CommandLine</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="group_earliest">
+      <title>Sysmon File Create Events</title>
+      <table>
+        <search>
+          <query>index=* sourcetype="xmlwineventlog:microsoft-windows-sysmon/operational" EventCode=11
+| sort _time
+| table _time, EventCode, EventDescription, TargetFilename, process_path,</query>
+          <earliest>$group_earliest$</earliest>
+          <latest>$group_latest$</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="group_earliest">
+      <title>All Sysmon Events</title>
+      <event>
+        <search>
+          <query>index=* sourcetype="xmlwineventlog:microsoft-windows-sysmon/operational" | fields + *</query>
+          <earliest>$group_earliest$</earliest>
+          <latest>$group_latest$</latest>
+        </search>
+        <option name="count">20</option>
+        <option name="list.drilldown">none</option>
+        <option name="list.wrap">1</option>
+        <option name="maxLines">5</option>
+        <option name="raw.drilldown">full</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">0</option>
+        <option name="table.drilldown">all</option>
+        <option name="table.sortDirection">desc</option>
+        <option name="table.wrap">1</option>
+        <option name="type">list</option>
+      </event>
     </panel>
   </row>
 </form>
