@@ -85,7 +85,7 @@
             <set token="group_earliest">$result.group_earliest$</set>
             <set token="group_latest">$result.group_latest$</set>
           </finalized>
-          <query>| search $request_payload$
+          <query>| search index=* $request_payload$
 | addinfo
 | sort _time
 | stats earliest(_time) as group_earliest latest(_time) as group_latest</query>
@@ -111,7 +111,7 @@
       <title>Sysmon non-eventCode=1</title>
       <table>
         <search>
-          <query>earliest=$group_earliest$ latest=$group_latest$ EventCode!=1
+          <query>earliest=$group_earliest$ latest=$group_latest$ index=* sourcetype="xmlwineventlog:microsoft-windows-sysmon/operational" EventCode!=1
 | sort _time
 | table EventCode, EventDescription, Details, object_path</query>
           <earliest>-7d@h</earliest>
@@ -134,7 +134,7 @@
       <title>Command Lines of Events during test time</title>
       <table>
         <search>
-          <query>| search earliest=$group_earliest$ latest=$group_latest$ | sort _time | rex field=CommandLine "-encodedcommand (?&lt;payload&gt;\w+)"
+          <query>| search index=* earliest=$group_earliest$ latest=$group_latest$ | sort _time | rex field=CommandLine "-encodedcommand (?&lt;payload&gt;\w+)"
 | search payload=*
 | eval new_payload = payload."===="
 | base64 action=decode field=new_payload
