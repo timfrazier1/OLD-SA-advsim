@@ -39,7 +39,7 @@
     <input type="dropdown" token="detectionSearch" searchWhenChanged="false">
       <label>Detection Search</label>
       <search>
-        <query>| rest /servicesNS/-/-/saved/searches | table title, search</query>
+        <query>| rest /servicesNS/-/-/saved/searches | search title!=*DMC* AND title!=*instrumentation* AND title!=*CIM* AND title!=*Errors*| table title, search</query>
         <earliest>-15m</earliest>
         <latest>now</latest>
       </search>
@@ -121,6 +121,11 @@
   <row>
     <panel depends="detectionSearch">
       <title>Detection Search Panel</title>
+      <input type="radio" token="search_hit" searchWhenChanged="true">
+        <label>Detection Search Fired? Use these radio buttons to select whether the detection search you selected at the top actually fired during the test time and detected the activity you were testing.  Selecting an option will update the MITRE ATT&amp;CK Nav display layer.</label>
+        <choice value="yes">Activity Detected</choice>
+        <choice value="no">Activity Not Detected</choice>
+      </input>
       <table>
         <title>$detectionSearch$</title>
         <search>
