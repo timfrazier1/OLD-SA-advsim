@@ -50,7 +50,7 @@
   <row>
     <panel>
       <table>
-        <search>
+        <search id="AdvSim_test_event">
           <finalized>
             <set token="search_id">$result.info_sid$</set>
             <set token="request_payload">$result.request_payload$</set>
@@ -122,10 +122,15 @@
     <panel depends="detectionSearch">
       <title>Detection Search Panel</title>
       <input type="radio" token="search_hit" searchWhenChanged="true">
-        <label>Detection Search Fired? Use these radio buttons to select whether the detection search you selected at the top actually fired during the test time and detected the activity you were testing.  Selecting an option will update the MITRE ATT&amp;CK Nav display layer.</label>
-        <choice value="yes">Activity Detected</choice>
-        <choice value="no">Activity Not Detected</choice>
+        <label>Detection Search Fired?</label>
+        <choice value="1">Activity Detected</choice>
+        <choice value="0">Activity Not Detected</choice>
       </input>
+      <html>
+        <p>
+          Use these radio buttons to select whether the detection search you selected at the top actually fired during the test time and detected the activity you were testing.  Selecting an option will update the MITRE ATT&amp;CK Nav display layer.
+        </p>
+      </html>
       <table>
         <title>$detectionSearch$</title>
         <search>
@@ -137,10 +142,32 @@
   </row>
   <row>
     <panel depends="group_earliest">
+      <title>Olaf Rule Detect Events</title>
+      <table>
+        <search>
+          <query>earliest=$group_earliest$ latest=$group_latest$ index=* host=$asset$ RuleName=*$test_id$*
+| sort _time | table _time, EventCode, EventType, EventDescription, RuleName,</query>
+          <earliest>-1d@h</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="group_earliest">
       <title>Sysmon Registry Events</title>
       <table>
         <search>
-          <query>earliest=$group_earliest$ latest=$group_latest$ index=* sourcetype="xmlwineventlog:microsoft-windows-sysmon/operational" (EventCode=12 OR EventCode=13)
+          <query>earliest=$group_earliest$ latest=$group_latest$ index=* host=$asset$ sourcetype="xmlwineventlog:microsoft-windows-sysmon/operational" (EventCode=12 OR EventCode=13)
 | sort _time
 | table _time, EventCode, EventDescription, Details, object_path,</query>
           <earliest>-1d@h</earliest>
@@ -163,7 +190,7 @@
       <title>Decoded Powershell commands from events during test time</title>
       <table>
         <search>
-          <query>| search index=* earliest=$group_earliest$ latest=$group_latest$ | sort _time | rex field=CommandLine "-encodedcommand (?&lt;payload&gt;\w+)"
+          <query>| search index=* host=$asset$ earliest=$group_earliest$ latest=$group_latest$ | sort _time | rex field=CommandLine "-encodedcommand (?&lt;payload&gt;\w+)"
 | search payload=*
 | eval new_payload = payload."===="
 | base64 action=decode field=new_payload
@@ -182,7 +209,7 @@
       <title>Cmd.exe commands from events during test time</title>
       <table>
         <search>
-          <query>| search index=* earliest=$group_earliest$ latest=$group_latest$ parent_process=*cmd.exe* CommandLine!=*-encoded*
+          <query>| search index=* host=$asset$ earliest=$group_earliest$ latest=$group_latest$ parent_process=*cmd.exe* CommandLine!=*-encoded*
 | sort _time
 | table _time, parent_process, CommandLine</query>
           <earliest>$earliest$</earliest>
@@ -198,7 +225,7 @@
       <title>Sysmon File Create Events</title>
       <table>
         <search>
-          <query>index=* sourcetype="xmlwineventlog:microsoft-windows-sysmon/operational" EventCode=11
+          <query>index=* sourcetype="xmlwineventlog:microsoft-windows-sysmon/operational" host=$asset$ EventCode=11
 | sort _time
 | table _time, EventCode, EventDescription, TargetFilename, process_path,</query>
           <earliest>$group_earliest$</earliest>
@@ -221,11 +248,34 @@
       <title>All Sysmon Events</title>
       <event>
         <search>
-          <query>index=* sourcetype="xmlwineventlog:microsoft-windows-sysmon/operational" | fields + *</query>
+          <query>index=* sourcetype="xmlwineventlog:microsoft-windows-sysmon/operational" host=$asset$ | fields + *</query>
           <earliest>$group_earliest$</earliest>
           <latest>$group_latest$</latest>
         </search>
         <option name="count">20</option>
+        <option name="list.drilldown">none</option>
+        <option name="list.wrap">1</option>
+        <option name="maxLines">5</option>
+        <option name="raw.drilldown">full</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">0</option>
+        <option name="table.drilldown">all</option>
+        <option name="table.sortDirection">desc</option>
+        <option name="table.wrap">1</option>
+        <option name="type">list</option>
+      </event>
+    </panel>
+  </row>
+  <row>
+    <panel depends="search_hit">
+      <title>Update ATTCK Board</title>
+      <event>
+        <search>
+          <query>| makeresults 1 | eval technique="$test_id$" | eval detected=$search_hit$ | genatklayer atkfield=technique</query>
+          <earliest>-60m@m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">5</option>
         <option name="list.drilldown">none</option>
         <option name="list.wrap">1</option>
         <option name="maxLines">5</option>
