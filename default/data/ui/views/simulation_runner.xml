@@ -73,24 +73,33 @@
         <latest>now</latest>
       </search>
     </input>
-        <input type="radio" token="detection_type" searchWhenChanged="true">
+    <input type="radio" token="detection_type" searchWhenChanged="true">
       <label>Detection Type</label>
       <choice value="sse">SSE Content</choice>
       <choice value="escu">ESCU Content</choice>
       <choice value="saved">Other Saved Searches</choice>
       <initialValue>sse</initialValue>
-
       <change>
-            <condition value="sse">
-              <set token="detectionSearch"> $SSEdetectionSearch$ </set>
-            </condition>
-            <condition value="escu">
-              <set token="detectionSearch"> $ESCUdetectionSearch$ </set>
-            </condition>
-            <condition value="saved">
-              <set token="detectionSearch"> $savedDetectionSearch$ </set>
-            </condition>
+        <condition value="sse">
+          <set token="detectionSearch">$SSEdetectionSearch$</set>
+        </condition>
+        <condition value="escu">
+          <set token="detectionSearch">$ESCUdetectionSearch$</set>
+        </condition>
+        <condition value="saved">
+          <set token="detectionSearch">$savedDetectionSearch$</set>
+        </condition>
       </change>
+    </input>
+    <input type="text" token="manual_command">
+      <label>Cmd.exe manual run</label>
+      <default>NA</default>
+      <initialValue>NA</initialValue>
+    </input>
+    <input type="text" token="manual_powershell">
+      <label>Powershell manual run</label>
+      <default>NA</default>
+      <initialValue>NA</initialValue>
     </input>
   </fieldset>
   <row>
@@ -104,6 +113,9 @@
           <query>| inputlookup attck_assets | search hostname="$asset$"
 | addinfo
 | eval dest=ip_address
+| eval technique_name="$tech_name$"
+| eval manual_command="$manual_command$"
+| eval manual_powershell="$manual_powershell$"
 | eval action="$test_id$"
 | eval request_payload=tostring(random())
 | eval playbook_name="$playbook_name$"
